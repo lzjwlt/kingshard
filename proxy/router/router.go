@@ -644,6 +644,23 @@ func (r *Router) rewriteSelectSql(plan *Plan, node *sqlparser.Select, tableIndex
 	//rewrite where
 	oldright, err := plan.rewriteWhereIn(tableIndex)
 
+	if node.GroupBy != nil {
+
+	}
+	if node.Having != nil {
+
+	}
+	if node.OrderBy != nil {
+		for _, n := range node.OrderBy {
+			if nn, ok := n.Expr.(*sqlparser.ColName); ok{
+				nn.TableIndex = tableIndex
+				//_ = nn
+			}
+		}
+	}
+
+
+
 	buf.Fprintf("%v%v%v%v%v%s",
 		node.Where,
 		node.GroupBy,
@@ -658,6 +675,7 @@ func (r *Router) rewriteSelectSql(plan *Plan, node *sqlparser.Select, tableIndex
 	}
 	return buf.String()
 }
+
 
 func (r *Router) generateSelectSql(plan *Plan, stmt sqlparser.Statement) error {
 	sqls := make(map[string][]string)

@@ -644,14 +644,27 @@ func (node *NullVal) Format(buf *TrackedBuffer) {
 // ColName represents a column name.
 type ColName struct {
 	Name, Qualifier []byte
+	TableIndex int
 }
 
 func (node *ColName) Format(buf *TrackedBuffer) {
 	if node.Qualifier != nil {
-		escape(buf, node.Qualifier)
+		if node.TableIndex > 0 {
+			escape2(buf, node.Qualifier, node.TableIndex)
+		} else {
+			escape(buf, node.Qualifier)
+		}
 		buf.Fprintf(".")
 	}
 	escape(buf, node.Name)
+}
+
+func escape2(buf *TrackedBuffer, name []byte, tableIndex int) {
+	if _, ok := keywords[string(name)]; ok {
+		buf.Fprintf("`%s_%s`", name, strconv.Itoa(tableIndex))
+	} else {
+		buf.Fprintf("%s_%s", name, strconv.Itoa(tableIndex))
+	}
 }
 
 func escape(buf *TrackedBuffer, name []byte) {
