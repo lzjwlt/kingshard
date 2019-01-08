@@ -582,6 +582,10 @@ func (r *Router) rewriteSelectSql(plan *Plan, node *sqlparser.Select, tableIndex
 	if len(node.GroupBy) != 0 {
 		prefix = ","
 		for _, n := range node.GroupBy {
+			// group分表
+			if nn, ok := n.(*sqlparser.ColName); ok {
+				nn.TableIndex = tableIndex
+			}
 			buf.Fprintf("%s%v", prefix, n)
 		}
 	}
@@ -644,22 +648,28 @@ func (r *Router) rewriteSelectSql(plan *Plan, node *sqlparser.Select, tableIndex
 	//rewrite where
 	oldright, err := plan.rewriteWhereIn(tableIndex)
 
-	if node.GroupBy != nil {
-
-	}
+	// having分表
 	if node.Having != nil {
-
-	}
-	if node.OrderBy != nil {
-		for _, n := range node.OrderBy {
-			if nn, ok := n.Expr.(*sqlparser.ColName); ok{
-				nn.TableIndex = tableIndex
-				//_ = nn
+		expr := node.Having.Expr
+		if ce, ok := expr.(*sqlparser.ComparisonExpr); ok {
+			left, right := ce.Left, ce.Right
+			if lce, ok := left.(*sqlparser.ColName); ok {
+				lce.TableIndex = tableIndex
+			}
+			if rce, ok := right.(*sqlparser.ColName); ok {
+				rce.TableIndex = tableIndex
 			}
 		}
 	}
 
-
+	// order分表
+	if node.OrderBy != nil {
+		for _, n := range node.OrderBy {
+			if nn, ok := n.Expr.(*sqlparser.ColName); ok {
+				nn.TableIndex = tableIndex
+			}
+		}
+	}
 
 	buf.Fprintf("%v%v%v%v%v%s",
 		node.Where,
@@ -675,7 +685,6 @@ func (r *Router) rewriteSelectSql(plan *Plan, node *sqlparser.Select, tableIndex
 	}
 	return buf.String()
 }
-
 
 func (r *Router) generateSelectSql(plan *Plan, stmt sqlparser.Statement) error {
 	sqls := make(map[string][]string)
